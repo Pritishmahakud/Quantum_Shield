@@ -1,5 +1,53 @@
+# Virtual Environment
 venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env
+.envrc
+
+# Python cache files
 __pycache__/
 *.pyc
-.env
+*.pyo
+*.pyd
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Logs
+*.log
+pip-log.txt
+
+# Unit test / coverage
+.coverage
+.coverage.*
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Flask
+instance/
+.webassets-cache
+
+# VS Code
 .vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
