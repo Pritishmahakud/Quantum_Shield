@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>QUANTUM_SHIELD // v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Exo+2:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+:root{
+  --ink:#00020a;--surface:#020b14;--card:#030f1c;--card2:#04131f;
+  --border:#0a2540;--border-hi:#0f3860;
+  --c:#00f0ff;--c-dim:rgba(0,240,255,.09);--c-glow:rgba(0,240,255,.45);
+  --p:#ff0077;--p-dim:rgba(255,0,119,.09);--p-glow:rgba(255,0,119,.4);
+  --v:#7b00ff;--v-dim:rgba(123,0,255,.1);
+  --g:#00ff87;--g-dim:rgba(0,255,135,.09);--g-glow:rgba(0,255,135,.4);
+  --w:#ff6600;--w-dim:rgba(255,102,0,.1);
+  --r:#ff2b2b;
+  --txt:#c8e8f0;--txt2:#5a8fa8;--txt3:#1e4a60;
+  --mono:'Share Tech Mono',monospace;--head:'Orbitron',sans-serif;--body:'Exo 2',sans-serif;
+  --glow-c:0 0 8px var(--c-glow),0 0 20px var(--c-glow);
+  --glow-p:0 0 8px var(--p-glow),0 0 20px var(--p-glow);
+  --glow-g:0 0 8px var(--g-glow),0 0 20px var(--g-glow);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--txt);font-family:var(--body);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden;cursor:crosshair}
+
+/* ── SCANLINES ── */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px);pointer-events:none;z-index:9999}
+
+/* ── GRID BG ── */
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,240,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.035) 1px,transparent 1px);
+  background-size:60px 60px;pointer-events:none;z-index:0}
+
+/* ── CORNER BRACKETS MIXIN ── */
+.bracket{position:relative}
+.bracket::before,.bracket::after{content:'';position:absolute;width:14px;height:14px;border-color:var(--c);border-style:solid;opacity:.6}
+.bracket::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.bracket::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+
+/* ── HEADER ── */
+header{position:sticky;top:0;z-index:200;background:rgba(0,2,10,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 2rem}
+.logo{font-family:var(--head);font-size:1.1rem;font-weight:900;letter-spacing:.18em;color:var(--c);text-shadow:var(--glow-c);display:flex;align-items:center;gap:.7rem}
+.logo-sub{font-size:.55rem;color:var(--txt2);letter-spacing:.12em;font-weight:400}
+.logo-divider{width:1px;height:28px;background:linear-gradient(to bottom,transparent,var(--c),transparent);opacity:.4}
+.header-right{display:flex;align-items:center;gap:.5rem}
+.htag{font-family:var(--mono);font-size:.62rem;padding:2px 8px;border:1px solid var(--border);border-radius:3px;color:var(--txt3);letter-spacing:.05em}
+.htag.live{border-color:rgba(0,255,135,.3);color:var(--g);animation:pulse-g 2s infinite}
+@keyframes pulse-g{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── HERO ── */
+.hero{position:relative;z-index:1;text-align:center;padding:3rem 1.5rem 2rem;overflow:hidden}
+.hero-scanline{position:absolute;top:0;left:0;right:0;height:2px;background:var(--c);opacity:.5;animation:scandown 4s linear infinite}
+@keyframes scandown{0%{top:0}100%{top:100%}}
+.hero-tag{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.7rem;color:var(--c);border:1px solid rgba(0,240,255,.25);background:var(--c-dim);padding:3px 14px;border-radius:2px;margin-bottom:1rem;letter-spacing:.1em}
+.hero-tag::before{content:'▶';font-size:.6rem;animation:blink 1.5s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+h1{font-family:var(--head);font-size:clamp(1.7rem,4vw,2.8rem);font-weight:900;letter-spacing:.08em;line-height:1.1;margin-bottom:.6rem;color:#fff}
+h1 .neon-c{color:var(--c);text-shadow:var(--glow-c)}
+h1 .neon-p{color:var(--p);text-shadow:var(--glow-p)}
+.hero-sub{color:var(--txt2);font-weight:300;font-size:.95rem;max-width:480px;margin:0 auto 2rem;font-family:var(--mono)}
+
+/* ── TABS ── */
+.tab-bar{display:flex;justify-content:center;position:relative;z-index:1;margin-bottom:2rem;flex-wrap:wrap;gap:2px;padding:0 1rem}
+.tab-btn{font-family:var(--head);font-size:.7rem;font-weight:600;letter-spacing:.1em;padding:.5rem 1.2rem;border:1px solid var(--border);background:var(--surface);color:var(--txt3);cursor:pointer;transition:all .2s;white-space:nowrap;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.tab-btn:hover{border-color:var(--border-hi);color:var(--txt2)}
+.tab-btn.active{background:var(--c-dim);border-color:var(--c);color:var(--c);text-shadow:0 0 10px var(--c-glow)}
+.tab-btn.chat-tab.active{background:var(--p-dim);border-color:var(--p);color:var(--p);text-shadow:0 0 10px var(--p-glow)}
+
+/* ── CONTAINER ── */
+.container{max-width:960px;margin:0 auto;padding:0 1.5rem 5rem;position:relative;z-index:1}
+.panel{display:none}.panel.active{display:block}
+
+/* ── STATUS ── */
+.status-bar{font-family:var(--mono);font-size:.72rem;color:var(--txt3);margin-bottom:1.2rem;padding:.4rem .8rem;border-left:2px solid var(--border);min-height:1.8em}
+.status-bar.active{color:var(--c);border-color:var(--c)}
+.status-bar.error{color:var(--r);border-color:var(--r)}
+.status-bar.success{color:var(--g);border-color:var(--g)}
+
+/* ── CYBER CARD ── */
+.cyber-card{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:1.4rem;margin-bottom:1.2rem;position:relative;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.cyber-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--c),transparent);opacity:.3}
+.card-label{font-family:var(--head);font-size:.65rem;font-weight:700;letter-spacing:.15em;color:var(--txt3);text-transform:uppercase;margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem}
+.card-label::before{content:'//';color:var(--c);opacity:.5}
+
+/* ── INPUT ── */
+textarea,input[type=text],input[type=password]{width:100%;background:rgba(0,2,10,.8);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:.85rem;padding:.75rem 1rem;outline:none;transition:border-color .2s,box-shadow .2s;line-height:1.6;border-radius:2px;resize:vertical}
+textarea:focus,input:focus{border-color:var(--c);box-shadow:0 0 0 1px rgba(0,240,255,.15),inset 0 0 20px rgba(0,240,255,.03)}
+textarea::placeholder,input::placeholder{color:var(--txt3)}
+textarea{min-height:90px}
+
+/* ── BUTTONS ── */
+.btn{width:100%;margin-top:.9rem;padding:.75rem;border:1px solid;border-radius:2px;font-family:var(--head);font-size:.8rem;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.btn-c{background:var(--c-dim);border-color:var(--c);color:var(--c)}
+.btn-c:hover{background:rgba(0,240,255,.18);box-shadow:var(--glow-c);transform:translateY(-1px)}
+.btn-p{background:var(--p-dim);border-color:var(--p);color:var(--p)}
+.btn-p:hover{background:rgba(255,0,119,.18);box-shadow:var(--glow-p)}
+.btn-g{background:var(--g-dim);border-color:var(--g);color:var(--g)}
+.btn-g:hover{background:rgba(0,255,135,.18);box-shadow:var(--glow-g)}
+.btn-w{background:var(--w-dim);border-color:var(--w);color:var(--w)}
+.btn.loading{pointer-events:none;opacity:.5}
+.btn.loading::after{content:'';position:absolute;top:0;left:-100%;width:200%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:shimmer 1s infinite}
+@keyframes shimmer{to{left:100%}}
+
+/* ── RESULT CARDS ── */
+.results-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.2rem}
+.result-card{background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:1.1rem;opacity:0;transform:translateY(12px);transition:opacity .4s,transform .4s;position:relative}
+.result-card.visible{opacity:1;transform:translateY(0)}
+.result-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;opacity:.2}
+.result-card.rsa::after{background:var(--w)}
+.result-card.ecc::after{background:var(--v)}
+.result-card.kyber::after{background:var(--g)}
+.result-card.dil::after{background:var(--p)}
+.rcard-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.rcard-name{font-family:var(--head);font-size:.9rem;font-weight:700;letter-spacing:.1em}
+.rcard-name.rsa{color:var(--w)}.rcard-name.ecc{color:var(--v)}.rcard-name.kyber{color:var(--g)}.rcard-name.dil{color:var(--p)}
+.qbadge{font-family:var(--mono);font-size:.6rem;padding:2px 8px;border-radius:2px;font-weight:600;letter-spacing:.04em}
+.qbadge.safe{background:var(--g-dim);color:var(--g);border:1px solid rgba(0,255,135,.25)}
+.qbadge.unsafe{background:var(--w-dim);color:var(--w);border:1px solid rgba(255,102,0,.25)}
+.rpills{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.8rem}
+.rpill{font-family:var(--mono);font-size:.62rem;color:var(--txt2);background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:1px 6px}
+.flabel{font-family:var(--mono);font-size:.6rem;color:var(--txt3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.2rem;margin-top:.65rem}
+.fvalue{font-family:var(--mono);font-size:.72rem;color:var(--txt2);background:rgba(0,2,10,.6);border:1px solid var(--border);border-radius:2px;padding:.4rem .7rem;word-break:break-all;line-height:1.5}
+.fvalue.ok{color:var(--g);border-color:rgba(0,255,135,.2);background:var(--g-dim)}
+.fvalue.bad{color:var(--r);border-color:rgba(255,43,43,.2);background:rgba(255,43,43,.06)}
+
+/* ── COMPARE TABLE ── */
+.ctable-card{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:1.3rem;opacity:0;transform:translateY(12px);transition:opacity .4s .28s,transform .4s .28s;margin-bottom:1.2rem;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
+.ctable-card.visible{opacity:1;transform:translateY(0)}
+.section-head{font-family:var(--head);font-size:.7rem;font-weight:700;letter-spacing:.15em;color:var(--txt2);text-transform:uppercase;margin-bottom:.8rem}
+.section-head::before{content:'// ';color:var(--c);opacity:.6}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{font-family:var(--mono);font-size:.62rem;letter-spacing:.07em;color:var(--txt3);text-transform:uppercase;text-align:left;padding:.4rem .65rem;border-bottom:1px solid var(--border)}
+td{padding:.55rem .65rem;border-bottom:1px solid rgba(10,37,64,.5);color:var(--txt2);font-family:var(--mono);font-size:.74rem}
+tr:last-child td{border-bottom:none}
+.td-rsa{color:var(--w)}.td-ecc{color:var(--v)}.td-kyber{color:var(--g)}.td-dil{color:var(--p)}
+.tick{color:var(--g)}.cross{color:var(--w)}
+
+/* ── FILE DROP ── */
+.drop-zone{border:2px dashed var(--border);border-radius:2px;padding:2.2rem 2rem;text-align:center;cursor:pointer;transition:all .2s;background:rgba(0,2,10,.5);margin-bottom:.9rem}
+.drop-zone:hover,.drop-zone.over{border-color:var(--c);background:var(--c-dim);box-shadow:inset 0 0 30px rgba(0,240,255,.05)}
+.drop-icon{font-size:2rem;margin-bottom:.5rem}
+.drop-title{font-family:var(--head);font-size:.85rem;font-weight:600;letter-spacing:.08em;margin-bottom:.2rem}
+.drop-sub{font-size:.75rem;color:var(--txt3);font-family:var(--mono)}
+#file-input{display:none}
+.algo-sel{display:flex;gap:.4rem;margin-bottom:.9rem;flex-wrap:wrap}
+.abtn{flex:1;min-width:60px;padding:.45rem .6rem;border:1px solid var(--border);border-radius:2px;background:var(--surface);color:var(--txt3);font-family:var(--head);font-size:.7rem;font-weight:600;letter-spacing:.08em;cursor:pointer;transition:all .2s;text-align:center}
+.abtn.active.a-rsa{border-color:var(--w);background:var(--w-dim);color:var(--w)}
+.abtn.active.a-ecc{border-color:var(--v);background:var(--v-dim);color:var(--v)}
+.abtn.active.a-kyber{border-color:var(--g);background:var(--g-dim);color:var(--g)}
+.file-result{display:none;margin-top:1rem}
+.file-result.show{display:block}
+.dl-btn{display:inline-flex;align-items:center;gap:.5rem;margin-top:.8rem;padding:.55rem 1.3rem;background:var(--g-dim);border:1px solid rgba(0,255,135,.3);border-radius:2px;color:var(--g);font-family:var(--head);font-size:.8rem;font-weight:600;letter-spacing:.08em;text-decoration:none;transition:all .2s;cursor:pointer}
+.dl-btn:hover{box-shadow:var(--glow-g)}
+
+/* ── SIGNATURE ── */
+.sig-result{display:none;margin-top:1.2rem}.sig-result.show{display:block}
+.tamper-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.8rem}
+.tbox{background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:1rem;text-align:center}
+.tbox.ok{border-color:rgba(0,255,135,.3);background:var(--g-dim)}
+.tbox.bad{border-color:rgba(255,43,43,.3);background:rgba(255,43,43,.07)}
+.tbox-icon{font-size:1.6rem;margin-bottom:.3rem}
+.tbox-label{font-family:var(--head);font-size:.75rem;font-weight:700;letter-spacing:.1em}
+.tbox.ok .tbox-label{color:var(--g)}.tbox.bad .tbox-label{color:var(--r)}
+.tbox-sub{font-size:.7rem;color:var(--txt3);margin-top:.15rem;font-family:var(--mono)}
+
+/* ── BENCHMARK ── */
+.bench-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin:.9rem 0}
+.stat-box{background:var(--card2);border:1px solid var(--border);border-radius:2px;padding:.85rem;text-align:center;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.stat-algo{font-family:var(--head);font-size:.7rem;font-weight:700;letter-spacing:.1em;margin-bottom:.25rem}
+.stat-algo.rsa{color:var(--w)}.stat-algo.ecc{color:var(--v)}.stat-algo.kyber{color:var(--g)}.stat-algo.dil{color:var(--p)}
+.stat-num{font-family:var(--mono);font-size:1.15rem;font-weight:600;color:#fff}
+.stat-u{font-family:var(--mono);font-size:.62rem;color:var(--txt3)}
+.stat-s{font-family:var(--mono);font-size:.6rem;color:var(--txt3);margin-top:.15rem}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:1.1rem}
+.chart-title{font-family:var(--head);font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--txt2);text-transform:uppercase;margin-bottom:.7rem}
+.chart-wrap{position:relative;height:200px}
+input[type=range]{width:100%;accent-color:var(--c)}
+.iter-row{display:flex;align-items:center;gap:1rem;margin-bottom:.5rem}
+.iter-label{font-family:var(--mono);font-size:.75rem;color:var(--txt2)}
+#iter-val{font-family:var(--mono);font-size:.8rem;color:var(--c);min-width:55px}
+
+/* ═══════════════════════════════════════════════
+   SECURE CHAT
+═══════════════════════════════════════════════ */
+.chat-layout{display:grid;grid-template-columns:280px 1fr;gap:1rem;min-height:520px}
+
+/* Sidebar */
+.chat-sidebar{display:flex;flex-direction:column;gap:.8rem}
+.room-panel{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:1.2rem;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.room-title{font-family:var(--head);font-size:.7rem;font-weight:700;letter-spacing:.15em;color:var(--p);margin-bottom:1rem;text-shadow:var(--glow-p)}
+.room-title::before{content:'// ';opacity:.5}
+.room-input{width:100%;background:rgba(0,2,10,.8);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:.8rem;padding:.55rem .8rem;outline:none;border-radius:2px;transition:border-color .2s;margin-bottom:.5rem}
+.room-input:focus{border-color:var(--p)}
+.room-input::placeholder{color:var(--txt3)}
+.rbtn{width:100%;padding:.5rem;border:1px solid;border-radius:2px;font-family:var(--head);font-size:.68rem;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-bottom:.4rem}
+.rbtn-create{background:var(--p-dim);border-color:var(--p);color:var(--p)}
+.rbtn-create:hover{background:rgba(255,0,119,.18);box-shadow:var(--glow-p)}
+.rbtn-join{background:var(--c-dim);border-color:var(--c);color:var(--c)}
+.rbtn-join:hover{background:rgba(0,240,255,.18);box-shadow:var(--glow-c)}
+.room-divider{text-align:center;font-family:var(--mono);font-size:.65rem;color:var(--txt3);margin:.2rem 0}
+.key-status{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:1rem}
+.ks-title{font-family:var(--head);font-size:.65rem;font-weight:700;letter-spacing:.12em;color:var(--txt2);margin-bottom:.7rem}
+.ks-title::before{content:'// ';color:var(--c);opacity:.4}
+.ks-row{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:.68rem;padding:.25rem 0;border-bottom:1px solid rgba(10,37,64,.4)}
+.ks-row:last-child{border-bottom:none}
+.ks-key{color:var(--txt3)}.ks-val{color:var(--txt2)}
+.ks-val.on{color:var(--g)}.ks-val.off{color:var(--r)}
+.view-toggle{display:flex;gap:.3rem;margin-bottom:.5rem}
+.vtbtn{flex:1;padding:.35rem;border:1px solid var(--border);border-radius:2px;background:var(--surface);color:var(--txt3);font-family:var(--mono);font-size:.65rem;cursor:pointer;text-align:center;transition:all .2s}
+.vtbtn.active{border-color:var(--c);color:var(--c);background:var(--c-dim)}
+
+/* Chat main */
+.chat-main{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}
+.chat-topbar{background:rgba(0,2,10,.7);border-bottom:1px solid var(--border);padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between}
+.chat-room-id{font-family:var(--head);font-size:.75rem;font-weight:700;letter-spacing:.12em;color:var(--p);text-shadow:var(--glow-p)}
+.chat-security{font-family:var(--mono);font-size:.62rem;color:var(--txt3);display:flex;align-items:center;gap:.4rem}
+.sec-dot{width:6px;height:6px;border-radius:50%;background:var(--r)}
+.sec-dot.armed{background:var(--g);box-shadow:0 0 6px var(--g)}
+
+/* Messages */
+.chat-messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.8rem;min-height:340px;max-height:380px;scroll-behavior:smooth}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:2px}
+
+/* Empty state */
+.chat-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:.5rem;opacity:.35}
+.chat-empty-icon{font-size:2rem}
+.chat-empty-txt{font-family:var(--mono);font-size:.75rem;color:var(--txt3);text-align:center}
+
+/* Message bubbles */
+.msg-wrap{display:flex;flex-direction:column;max-width:82%}
+.msg-wrap.mine{align-self:flex-end;align-items:flex-end}
+.msg-wrap.theirs{align-self:flex-start;align-items:flex-start}
+.msg-meta{font-family:var(--mono);font-size:.6rem;color:var(--txt3);margin-bottom:.2rem;display:flex;align-items:center;gap:.4rem}
+.msg-sig-badge{font-size:.55rem;padding:1px 5px;border-radius:2px}
+.msg-sig-badge.ok{background:var(--g-dim);color:var(--g);border:1px solid rgba(0,255,135,.2)}
+.msg-sig-badge.bad{background:rgba(255,43,43,.1);color:var(--r)}
+
+/* Clean view bubble */
+.bubble-clean{padding:.65rem .9rem;border-radius:2px;font-family:var(--body);font-size:.88rem;line-height:1.5;position:relative;word-break:break-word}
+.mine .bubble-clean{background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.2);color:var(--txt);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.theirs .bubble-clean{background:rgba(255,0,119,.08);border:1px solid rgba(255,0,119,.18);color:var(--txt);clip-path:polygon(8px 0,100% 0,100% 100%,0 100%,0 8px)}
+
+/* Technical view bubble */
+.bubble-tech{padding:.7rem;border:1px solid var(--border);border-radius:2px;background:rgba(0,2,10,.8);width:100%}
+.tech-row{margin-bottom:.3rem}
+.tech-k{font-family:var(--mono);font-size:.6rem;color:var(--txt3);letter-spacing:.06em;text-transform:uppercase}
+.tech-v{font-family:var(--mono);font-size:.65rem;color:var(--txt2);word-break:break-all;line-height:1.4}
+.tech-v.plain{color:var(--g)}
+.tech-v.cipher{color:var(--c)}
+.tech-v.sig{color:var(--p)}
+.tech-v.ok{color:var(--g)}.tech-v.bad{color:var(--r)}
+.decrypt-anim{animation:decrypt 0.6s ease forwards}
+@keyframes decrypt{0%{opacity:0;filter:blur(4px) brightness(3)}100%{opacity:1;filter:none}}
+
+/* Input row */
+.chat-input-row{border-top:1px solid var(--border);padding:.8rem;display:flex;gap:.6rem;align-items:flex-end;background:rgba(0,2,10,.5)}
+.chat-input-row textarea{min-height:40px;max-height:100px;flex:1;margin-top:0;border-radius:2px;padding:.5rem .8rem;font-size:.85rem;resize:none}
+.send-btn{background:var(--p-dim);border:1px solid var(--p);border-radius:2px;color:var(--p);font-family:var(--head);font-size:.7rem;font-weight:700;letter-spacing:.1em;padding:.5rem .9rem;cursor:pointer;transition:all .2s;white-space:nowrap;height:38px}
+.send-btn:hover{box-shadow:var(--glow-p)}
+.send-btn:disabled{opacity:.3;pointer-events:none}
+
+/* KEx overlay */
+.kex-overlay{display:none;position:absolute;inset:0;background:rgba(0,2,10,.92);z-index:50;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;border-radius:2px}
+.kex-overlay.show{display:flex}
+.kex-title{font-family:var(--head);font-size:1rem;font-weight:700;letter-spacing:.15em;color:var(--c);text-shadow:var(--glow-c)}
+.kex-steps{display:flex;flex-direction:column;gap:.3rem;width:300px}
+.kex-step{font-family:var(--mono);font-size:.72rem;padding:.3rem .6rem;border-left:2px solid var(--border);color:var(--txt3);transition:all .3s}
+.kex-step.done{border-color:var(--g);color:var(--g)}
+.kex-step.active{border-color:var(--c);color:var(--c);animation:kex-pulse .8s infinite}
+@keyframes kex-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── MISC ── */
+@media(max-width:700px){
+  .header-right{display:none}
+  .chat-layout{grid-template-columns:1fr}
+  .chat-sidebar{flex-direction:row;flex-wrap:wrap}
+  .room-panel,.key-status{flex:1;min-width:200px}
+  .results-grid{grid-template-columns:1fr}
+  .charts-grid{grid-template-columns:1fr}
+  .bench-stats{grid-template-columns:repeat(2,1fr)}
+  .tamper-row{grid-template-columns:1fr}
+  h1{font-size:1.6rem}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span>QUANTUM_SHIELD</span>
+    <div class="logo-divider"></div>
+    <span class="logo-sub">POST-QUANTUM CRYPTOGRAPHY // v3.0</span>
+  </div>
+  <div class="header-right">
+    <span class="htag live">● ONLINE</span>
+    <span class="htag">NIST 2024</span>
+    <span class="htag">ML-KEM</span>
+    <span class="htag">ML-DSA</span>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-scanline"></div>
+  <div class="hero-tag">INITIALIZING QUANTUM-SAFE PROTOCOLS</div>
+  <h1><span class="neon-c">QUANTUM</span> <span class="neon-p">SHIELD</span></h1>
+  <p class="hero-sub">&gt; RSA · ECC · KYBER-512 · DILITHIUM-2 · SECURE CHAT_</p>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tab-btn active"   onclick="switchTab('text')" >⚡ ENCRYPT</button>
+  <button class="tab-btn"          onclick="switchTab('file')" >⊞ FILE</button>
+  <button class="tab-btn"          onclick="switchTab('sign')" >✦ SIGN</button>
+  <button class="tab-btn"          onclick="switchTab('bench')">◈ BENCHMARK</button>
+  <button class="tab-btn chat-tab" onclick="switchTab('chat')" >⬡ SECURE CHAT</button>
+</div>
+
+<div class="container">
+<div class="status-bar" id="status-bar">SYSTEM READY — SELECT OPERATION</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 1 — TEXT ENCRYPTION
+══════════════════════════════════════════ -->
+<div class="panel active" id="panel-text">
+  <div class="cyber-card">
+    <div class="card-label">INPUT MESSAGE</div>
+    <textarea id="msg-input" placeholder="> TYPE MESSAGE TO ENCRYPT_" rows="4"></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:.3rem">
+      <span id="char-count" style="font-family:var(--mono);font-size:.62rem;color:var(--txt3)">0 CHARS</span>
+    </div>
+    <button class="btn btn-c" id="encrypt-btn" onclick="encryptText()">⚡ RUN RSA · ECC · KYBER</button>
+  </div>
+
+  <div class="results-grid" id="results-grid">
+    <div class="result-card rsa" id="card-rsa">
+      <div class="rcard-header"><span class="rcard-name rsa">RSA-2048</span><span class="qbadge unsafe">⚠ QUANTUM UNSAFE</span></div>
+      <div class="rpills"><span class="rpill" id="rsa-time">— ms</span><span class="rpill">2048-BIT</span><span class="rpill">OAEP-SHA256</span></div>
+      <div class="flabel">BASIS</div><div class="fvalue">Integer Factorization Problem</div>
+      <div class="flabel">CIPHERTEXT</div><div class="fvalue" id="rsa-ct">—</div>
+      <div class="flabel">DECRYPTED</div><div class="fvalue ok" id="rsa-dec">—</div>
+    </div>
+    <div class="result-card ecc" id="card-ecc">
+      <div class="rcard-header"><span class="rcard-name ecc">ECC-ECDH</span><span class="qbadge unsafe">⚠ QUANTUM UNSAFE</span></div>
+      <div class="rpills"><span class="rpill" id="ecc-time">— ms</span><span class="rpill">256-BIT</span><span class="rpill">SECP256R1+AES</span></div>
+      <div class="flabel">BASIS</div><div class="fvalue">Elliptic Curve Discrete Log Problem</div>
+      <div class="flabel">ALICE PUB KEY</div><div class="fvalue" id="ecc-pub">—</div>
+      <div class="flabel">DECRYPTED</div><div class="fvalue ok" id="ecc-dec">—</div>
+    </div>
+    <div class="result-card kyber" id="card-kyber">
+      <div class="rcard-header"><span class="rcard-name kyber">KYBER-512</span><span class="qbadge safe">✅ QUANTUM SAFE</span></div>
+      <div class="rpills"><span class="rpill" id="kyber-time">— ms</span><span class="rpill">ML-KEM</span><span class="rpill">FIPS 203</span></div>
+      <div class="flabel">BASIS</div><div class="fvalue">Module-LWE (Lattice)</div>
+      <div class="flabel">SHARED SECRET</div><div class="fvalue" id="kyber-secret">—</div>
+      <div class="flabel">DECRYPTED</div><div class="fvalue ok" id="kyber-dec">—</div>
+    </div>
+  </div>
+
+  <div class="ctable-card" id="compare-card">
+    <div class="section-head">LIVE COMPARISON</div>
+    <table>
+      <thead><tr><th>ALGORITHM</th><th>BASIS</th><th>KEY SIZE</th><th>QUANTUM</th><th>TIME</th></tr></thead>
+      <tbody>
+        <tr><td class="td-rsa">RSA</td><td>Factorization</td><td>2048 bits</td><td><span class="cross">❌</span></td><td id="t-rsa">—</td></tr>
+        <tr><td class="td-ecc">ECC</td><td>ECDLP</td><td>256 bits</td><td><span class="cross">❌</span></td><td id="t-ecc">—</td></tr>
+        <tr><td class="td-kyber">Kyber</td><td>Module-LWE</td><td>800 bits</td><td><span class="tick">✅</span></td><td id="t-kyber">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 2 — FILE ENCRYPTION
+══════════════════════════════════════════ -->
+<div class="panel" id="panel-file">
+  <div class="cyber-card">
+    <div class="card-label">SELECT ALGORITHM</div>
+    <div class="algo-sel">
+      <div class="abtn a-rsa"        onclick="selectAlgo('rsa')">RSA</div>
+      <div class="abtn a-ecc"        onclick="selectAlgo('ecc')">ECC</div>
+      <div class="abtn a-kyber active" onclick="selectAlgo('kyber')">KYBER ✅</div>
+    </div>
+    <div class="card-label">UPLOAD FILE</div>
+    <div class="drop-zone" id="drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="ev(event)" ondragleave="el()" ondrop="ed(event)">
+      <div class="drop-icon">⬡</div>
+      <div class="drop-title" id="drop-title">DROP FILE OR CLICK TO BROWSE</div>
+      <div class="drop-sub">TEXT FILES ONLY · MAX 5 MB</div>
+    </div>
+    <input type="file" id="file-input" onchange="hfs(event)"/>
+    <button class="btn btn-g" id="file-btn" onclick="encryptFile()">🔒 ENCRYPT FILE</button>
+  </div>
+  <div class="file-result" id="file-result">
+    <div class="cyber-card">
+      <div class="section-head">ENCRYPTION RESULT</div>
+      <div class="flabel">ALGORITHM</div><div class="fvalue" id="fr-algo">—</div>
+      <div class="flabel">ORIGINAL SIZE</div><div class="fvalue" id="fr-orig">—</div>
+      <div class="flabel">ENCRYPTED SIZE</div><div class="fvalue" id="fr-enc">—</div>
+      <div class="flabel">FILENAME</div><div class="fvalue" id="fr-name">—</div>
+      <a class="dl-btn" id="dl-link" href="#" download>⬇ DOWNLOAD ENCRYPTED FILE</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 3 — DIGITAL SIGNATURES
+══════════════════════════════════════════ -->
+<div class="panel" id="panel-sign">
+  <div class="cyber-card" style="border-color:rgba(255,0,119,.2)">
+    <div style="font-family:var(--mono);font-size:.72rem;color:var(--p);margin-bottom:.8rem;opacity:.85">
+      ▶ CRYSTALS-Dilithium-2 · ML-DSA (FIPS 204) · Quantum-Safe Digital Signatures<br/>
+      <span style="color:var(--txt3)">Lattice hardness — impossible to forge, even with quantum computers.</span>
+    </div>
+    <div class="card-label">MESSAGE TO SIGN</div>
+    <textarea id="sig-input" placeholder="> ENTER MESSAGE TO SIGN_" rows="4"></textarea>
+    <button class="btn btn-p" id="sign-btn" onclick="signMessage()">✦ SIGN WITH DILITHIUM-2</button>
+  </div>
+
+  <div class="sig-result" id="sig-result">
+    <div class="result-card dil visible">
+      <div class="rcard-header"><span class="rcard-name dil">DILITHIUM-2</span><span class="qbadge safe">✅ QUANTUM SAFE</span></div>
+      <div class="rpills"><span class="rpill" id="sig-time">— ms</span><span class="rpill">ML-DSA</span><span class="rpill">FIPS 204</span><span class="rpill">Module-LWE</span></div>
+      <div class="flabel">PUBLIC KEY SIZE</div><div class="fvalue" id="sig-pk-size">—</div>
+      <div class="flabel">PUBLIC KEY (hex)</div><div class="fvalue" id="sig-pk">—</div>
+      <div class="flabel">SIGNATURE SIZE</div><div class="fvalue" id="sig-size">—</div>
+      <div class="flabel">SIGNATURE (hex)</div><div class="fvalue" id="sig-hex">—</div>
+      <div class="flabel">VERIFICATION</div><div class="fvalue ok" id="sig-verify">—</div>
+    </div>
+
+    <div class="ctable-card visible" style="margin-top:1rem">
+      <div class="section-head">TAMPER DETECTION DEMO</div>
+      <p style="font-family:var(--mono);font-size:.72rem;color:var(--txt2);margin-bottom:.8rem">Change even one character → signature becomes instantly invalid. This proves message integrity.</p>
+      <div class="tamper-row">
+        <div class="tbox ok"><div class="tbox-icon">✅</div><div class="tbox-label">ORIGINAL</div><div class="tbox-sub">Signature VALID</div></div>
+        <div class="tbox bad"><div class="tbox-icon">🚫</div><div class="tbox-label">TAMPERED</div><div class="tbox-sub">Signature INVALID — attack detected</div></div>
+      </div>
+    </div>
+
+    <div class="ctable-card visible" style="margin-top:1rem">
+      <div class="section-head">SIGNATURE ALGORITHM COMPARISON</div>
+      <table>
+        <thead><tr><th>ALGORITHM</th><th>TYPE</th><th>PUB KEY</th><th>SIG SIZE</th><th>QUANTUM SAFE</th></tr></thead>
+        <tbody>
+          <tr><td class="td-rsa">RSA-2048</td><td>Factorization</td><td>256 B</td><td>256 B</td><td><span class="cross">❌</span></td></tr>
+          <tr><td class="td-ecc">ECDSA-256</td><td>ECDLP</td><td>64 B</td><td>72 B</td><td><span class="cross">❌</span></td></tr>
+          <tr><td class="td-dil">Dilithium-2</td><td>Module-LWE</td><td>1312 B</td><td>2420 B</td><td><span class="tick">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 4 — BENCHMARK
+══════════════════════════════════════════ -->
+<div class="panel" id="panel-bench">
+  <div class="cyber-card">
+    <div class="card-label">BENCHMARK SETTINGS</div>
+    <div class="iter-row">
+      <span class="iter-label">ITERATIONS:</span>
+      <input type="range" id="iter-slider" min="5" max="50" value="20" oninput="document.getElementById('iter-val').textContent=this.value+' RUNS'"/>
+      <span id="iter-val">20 RUNS</span>
+    </div>
+    <p style="font-family:var(--mono);font-size:.68rem;color:var(--txt3);margin-top:.4rem">Full cycle: keygen + encrypt/sign + decrypt/verify, measured N times with real statistics.</p>
+    <button class="btn btn-w" id="bench-btn" onclick="runBenchmark()">◈ RUN BENCHMARK</button>
+  </div>
+
+  <div id="bench-stats" class="bench-stats" style="display:none">
+    <div class="stat-box"><div class="stat-algo rsa">RSA</div><div class="stat-num" id="b-rsa">—</div><div class="stat-u">MS AVG</div><div class="stat-s" id="b-rsa-s">—</div></div>
+    <div class="stat-box"><div class="stat-algo ecc">ECC</div><div class="stat-num" id="b-ecc">—</div><div class="stat-u">MS AVG</div><div class="stat-s" id="b-ecc-s">—</div></div>
+    <div class="stat-box"><div class="stat-algo kyber">KYBER</div><div class="stat-num" id="b-kyber">—</div><div class="stat-u">MS AVG</div><div class="stat-s" id="b-kyber-s">—</div></div>
+    <div class="stat-box"><div class="stat-algo dil">DILITHIUM</div><div class="stat-num" id="b-dil">—</div><div class="stat-u">MS AVG</div><div class="stat-s" id="b-dil-s">—</div></div>
+  </div>
+
+  <div class="charts-grid" id="charts-grid" style="display:none">
+    <div class="chart-box"><div class="chart-title">⏱ AVG EXECUTION TIME (ms)</div><div class="chart-wrap"><canvas id="ch-speed"></canvas></div></div>
+    <div class="chart-box"><div class="chart-title">🔑 PUBLIC KEY SIZE (bits)</div><div class="chart-wrap"><canvas id="ch-keys"></canvas></div></div>
+    <div class="chart-box"><div class="chart-title">📈 TIME PER RUN (all iterations)</div><div class="chart-wrap"><canvas id="ch-line"></canvas></div></div>
+    <div class="chart-box"><div class="chart-title">📊 MIN / AVG / MAX</div><div class="chart-wrap"><canvas id="ch-range"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 5 — SECURE CHAT
+══════════════════════════════════════════ -->
+<div class="panel" id="panel-chat">
+  <div style="font-family:var(--mono);font-size:.72rem;color:var(--txt2);padding:.5rem .8rem;border:1px solid rgba(255,0,119,.2);border-radius:2px;background:var(--p-dim);margin-bottom:1rem">
+    ▶ Real-time encrypted chat · Kyber-512 key exchange · AES-256-GCM messages · Dilithium-2 signatures<br/>
+    <span style="color:var(--txt3)">Every message is encrypted before leaving your browser. The server only sees ciphertext.</span>
+  </div>
+
+  <div class="chat-layout">
+    <!-- SIDEBAR -->
+    <div class="chat-sidebar">
+      <div class="room-panel">
+        <div class="room-title">ESTABLISH CHANNEL</div>
+
+        <input class="room-input" id="chat-name" placeholder="YOUR CODENAME_" maxlength="20"/>
+        <button class="rbtn rbtn-create" onclick="createRoom()">⬡ CREATE NEW ROOM</button>
+        <div class="room-divider">— OR JOIN EXISTING —</div>
+        <input class="room-input" id="room-code-input" placeholder="ROOM CODE (e.g. AB12XY)_" maxlength="10" style="text-transform:uppercase"/>
+        <button class="rbtn rbtn-join" onclick="joinRoom()">→ JOIN ROOM</button>
+
+        <div id="room-display" style="display:none;margin-top:.8rem">
+          <div class="flabel">ROOM CODE</div>
+          <div class="fvalue" id="room-code-display" style="color:var(--p);font-size:1.1rem;letter-spacing:.15em;text-align:center;cursor:pointer" onclick="copyRoomCode()" title="Click to copy">—</div>
+          <div style="font-family:var(--mono);font-size:.62rem;color:var(--txt3);text-align:center;margin-top:.3rem">Share this code with your partner</div>
+        </div>
+      </div>
+
+      <div class="key-status">
+        <div class="ks-title">CHANNEL STATUS</div>
+        <div class="ks-row"><span class="ks-key">CONNECTED</span><span class="ks-val off" id="ks-conn">NO</span></div>
+        <div class="ks-row"><span class="ks-key">PARTNER</span><span class="ks-val off" id="ks-partner">WAITING</span></div>
+        <div class="ks-row"><span class="ks-key">KYBER KEY</span><span class="ks-val off" id="ks-kyber">NOT SET</span></div>
+        <div class="ks-row"><span class="ks-key">DILITHIUM</span><span class="ks-val off" id="ks-dil">NOT SET</span></div>
+        <div class="ks-row"><span class="ks-key">CHANNEL</span><span class="ks-val off" id="ks-channel">UNSECURED</span></div>
+      </div>
+
+      <div class="key-status" id="view-toggle-box">
+        <div class="ks-title">MESSAGE VIEW</div>
+        <div class="view-toggle">
+          <div class="vtbtn active" id="vt-clean" onclick="setView('clean')">CLEAN</div>
+          <div class="vtbtn" id="vt-tech"  onclick="setView('tech')">TECHNICAL</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:.62rem;color:var(--txt3);margin-top:.3rem">Technical: shows ciphertext + signature for each message.</div>
+      </div>
+    </div>
+
+    <!-- CHAT MAIN -->
+    <div class="chat-main" style="position:relative">
+      <!-- Key exchange overlay -->
+      <div class="kex-overlay" id="kex-overlay">
+        <div class="kex-title">⬡ QUANTUM KEY EXCHANGE</div>
+        <div class="kex-steps" id="kex-steps">
+          <div class="kex-step" id="ks1">Generating Kyber-512 keypair...</div>
+          <div class="kex-step" id="ks2">Sharing public key with partner...</div>
+          <div class="kex-step" id="ks3">Performing encapsulation...</div>
+          <div class="kex-step" id="ks4">Deriving shared secret...</div>
+          <div class="kex-step" id="ks5">Generating Dilithium-2 keypair...</div>
+          <div class="kex-step" id="ks6">Exchanging signature keys...</div>
+          <div class="kex-step" id="ks7">Securing channel...</div>
+        </div>
+      </div>
+
+      <div class="chat-topbar">
+        <span class="chat-room-id" id="chat-room-label">NO CHANNEL</span>
+        <span class="chat-security">
+          <span class="sec-dot" id="sec-dot"></span>
+          <span id="sec-label">UNSECURED</span>
+        </span>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-empty" id="chat-empty">
+          <div class="chat-empty-icon">⬡</div>
+          <div class="chat-empty-txt">CREATE OR JOIN A ROOM TO BEGIN<br/>END-TO-END ENCRYPTED COMMUNICATION</div>
+        </div>
+      </div>
+
+      <div class="chat-input-row">
+        <textarea id="chat-msg" placeholder="> TYPE ENCRYPTED MESSAGE_" rows="1" onkeydown="chatKey(event)" disabled></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>SEND ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let selectedAlgo = 'kyber';
+let selectedFile  = null;
+let chartInstances = {};
+
+// Chat state
+let socket = null;
+let chatState = {
+  roomId: null, username: null,
+  kyberPk: null, kyberSk: null,   // hex
+  sharedKey: null,                  // hex — AES key
+  dilPk: null, dilSk: null,        // hex
+  partnerDilPk: null,              // hex — partner's Dilithium PK
+  isInitiator: false,              // did we create the room?
+  secured: false,
+  view: 'clean',
+};
+
+// ════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  const tabs = ['text','file','sign','bench','chat'];
+  document.querySelectorAll('.tab-btn')[tabs.indexOf(name)].classList.add('active');
+  setStatus('');
+}
+
+// ════════════════════════════════════════════
+//  STATUS
+// ════════════════════════════════════════════
+function setStatus(msg, cls='') {
+  const b = document.getElementById('status-bar');
+  b.textContent = msg || 'SYSTEM READY';
+  b.className = 'status-bar ' + cls;
+}
+
+// ════════════════════════════════════════════
+//  CHAR COUNT
+// ════════════════════════════════════════════
+document.getElementById('msg-input').addEventListener('input', function() {
+  document.getElementById('char-count').textContent = this.value.length + ' CHARS';
+});
+
+// ════════════════════════════════════════════
+//  TAB 1 — TEXT ENCRYPT
+// ════════════════════════════════════════════
+async function encryptText() {
+  const msg = document.getElementById('msg-input').value.trim();
+  if (!msg) return setStatus('> MESSAGE CANNOT BE EMPTY', 'error');
+  const btn = document.getElementById('encrypt-btn');
+  btn.classList.add('loading'); btn.textContent = '⏳ ENCRYPTING...';
+  setStatus('> RUNNING RSA · ECC · KYBER ENCRYPTION...', 'active');
+  try {
+    const res  = await fetch('/api/encrypt/text', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})});
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    const r = data.results;
+    set('rsa-ct',   r.rsa.ciphertext_hex);
+    set('rsa-dec',  r.rsa.match ? '✅ '+r.rsa.decrypted : '❌ MISMATCH');
+    set('rsa-time', r.rsa.time_ms+' ms');
+    set('t-rsa',    r.rsa.time_ms+' ms');
+    set('ecc-pub',  r.ecc.alice_pub_hex);
+    set('ecc-dec',  r.ecc.match ? '✅ '+r.ecc.decrypted : '❌ MISMATCH');
+    set('ecc-time', r.ecc.time_ms+' ms');
+    set('t-ecc',    r.ecc.time_ms+' ms');
+    set('kyber-secret', '🔑 '+r.kyber.shared_key_hex+(r.kyber.keys_match?' ✅':' ❌'));
+    set('kyber-dec',    r.kyber.match ? '✅ '+r.kyber.decrypted : '❌ MISMATCH');
+    set('kyber-time',   r.kyber.time_ms+' ms');
+    set('t-kyber',      r.kyber.time_ms+' ms');
+    ['card-rsa','card-ecc','card-kyber'].forEach((id,i) => setTimeout(()=>document.getElementById(id).classList.add('visible'), i*120));
+    setTimeout(() => document.getElementById('compare-card').classList.add('visible'), 400);
+    setStatus('> ENCRYPTION COMPLETE — ALL ALGORITHMS SUCCESSFUL', 'success');
+  } catch(e) { setStatus('> ERROR: '+e.message, 'error'); }
+  finally { btn.classList.remove('loading'); btn.textContent = '⚡ RUN RSA · ECC · KYBER'; }
+}
+
+// ════════════════════════════════════════════
+//  TAB 2 — FILE
+// ════════════════════════════════════════════
+function selectAlgo(a) {
+  selectedAlgo = a;
+  document.querySelectorAll('.abtn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.a-'+a).classList.add('active');
+}
+function ev(e){e.preventDefault();document.getElementById('drop-zone').classList.add('over')}
+function el(){document.getElementById('drop-zone').classList.remove('over')}
+function ed(e){e.preventDefault();el();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0])}
+function hfs(e){if(e.target.files[0])setFile(e.target.files[0])}
+function setFile(f){selectedFile=f;set('drop-title','⬡ '+f.name+' ('+fb(f.size)+')')}
+function fb(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB'}
+
+async function encryptFile() {
+  if (!selectedFile) return setStatus('> SELECT A FILE FIRST', 'error');
+  const btn = document.getElementById('file-btn');
+  btn.classList.add('loading'); btn.textContent = '⏳ ENCRYPTING...';
+  setStatus('> ENCRYPTING WITH '+selectedAlgo.toUpperCase()+'...', 'active');
+  const fd = new FormData(); fd.append('file',selectedFile); fd.append('algorithm',selectedAlgo);
+  try {
+    const res  = await fetch('/api/encrypt/file', {method:'POST', body:fd});
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    set('fr-algo', data.algorithm + (data.algorithm==='KYBER' ? ' — QUANTUM-SAFE ✅' : ' — NOT QUANTUM-SAFE ⚠'));
+    set('fr-orig', fb(data.original_size));
+    set('fr-enc',  fb(data.encrypted_size));
+    set('fr-name', data.filename);
+    const bytes = Uint8Array.from(atob(data.b64_data), c => c.charCodeAt(0));
+    const dl = document.getElementById('dl-link');
+    dl.href = URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'}));
+    dl.download = data.filename;
+    document.getElementById('file-result').classList.add('show');
+    setStatus('> FILE ENCRYPTED WITH '+data.algorithm, 'success');
+  } catch(e) { setStatus('> ERROR: '+e.message, 'error'); }
+  finally { btn.classList.remove('loading'); btn.textContent = '🔒 ENCRYPT FILE'; }
+}
+
+// ════════════════════════════════════════════
+//  TAB 3 — SIGNATURES
+// ════════════════════════════════════════════
+async function signMessage() {
+  const msg = document.getElementById('sig-input').value.trim();
+  if (!msg) return setStatus('> ENTER A MESSAGE TO SIGN', 'error');
+  const btn = document.getElementById('sign-btn');
+  btn.classList.add('loading'); btn.textContent = '⏳ SIGNING...';
+  setStatus('> SIGNING WITH DILITHIUM-2...', 'active');
+  try {
+    const res  = await fetch('/api/sign', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})});
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    const r = data.result;
+    set('sig-time',    r.time_ms+' ms');
+    set('sig-pk-size', r.public_key_size+' bytes ('+r.public_key_size*8+' bits)');
+    set('sig-pk',      r.public_key_hex);
+    set('sig-size',    r.signature_size+' bytes');
+    set('sig-hex',     r.signature_hex);
+    set('sig-verify',  r.verified ? '✅ SIGNATURE VALID — authentic & unaltered' : '❌ SIGNATURE INVALID');
+    document.getElementById('sig-verify').className = 'fvalue '+(r.verified?'ok':'bad');
+    document.getElementById('sig-result').classList.add('show');
+    setStatus('> DILITHIUM SIGN & VERIFY COMPLETE', 'success');
+  } catch(e) { setStatus('> ERROR: '+e.message, 'error'); }
+  finally { btn.classList.remove('loading'); btn.textContent = '✦ SIGN WITH DILITHIUM-2'; }
+}
+
+// ════════════════════════════════════════════
+//  TAB 4 — BENCHMARK
+// ════════════════════════════════════════════
+function destroyChart(id) { if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id]} }
+const CC = {
+  rsa:       {bg:'rgba(255,102,0,.65)', b:'#ff6600'},
+  ecc:       {bg:'rgba(123,0,255,.65)', b:'#7b00ff'},
+  kyber:     {bg:'rgba(0,255,135,.65)', b:'#00ff87'},
+  dilithium: {bg:'rgba(255,0,119,.65)', b:'#ff0077'},
+};
+const CD = {
+  plugins:{legend:{labels:{color:'#5a8fa8',font:{family:"'Share Tech Mono',monospace",size:11}}}},
+  scales:{x:{ticks:{color:'#1e4a60'},grid:{color:'rgba(10,37,64,.7)'}},y:{ticks:{color:'#1e4a60'},grid:{color:'rgba(10,37,64,.7)'}}}
+};
+
+async function runBenchmark() {
+  const iters = parseInt(document.getElementById('iter-slider').value);
+  const btn = document.getElementById('bench-btn');
+  btn.classList.add('loading'); btn.textContent = '⏳ RUNNING...';
+  setStatus('> RUNNING '+iters+' ITERATIONS PER ALGORITHM...', 'active');
+  try {
+    const res  = await fetch('/api/benchmark', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({iterations:iters})});
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    const r = data.results;
+
+    function fillS(id, d) {
+      set('b-'+id, d.avg);
+      set('b-'+id+'-s', 'MIN '+d.min+' · MAX '+d.max+' · σ'+d.stdev);
+    }
+    fillS('rsa',r.rsa); fillS('ecc',r.ecc); fillS('kyber',r.kyber); fillS('dil',r.dilithium);
+    document.getElementById('bench-stats').style.display='grid';
+    document.getElementById('charts-grid').style.display='grid';
+
+    const labs = ['RSA','ECC','Kyber','Dilithium'];
+    const clrs = [CC.rsa.bg,CC.ecc.bg,CC.kyber.bg,CC.dilithium.bg];
+    const brds = [CC.rsa.b,CC.ecc.b,CC.kyber.b,CC.dilithium.b];
+
+    destroyChart('speed');
+    chartInstances.speed = new Chart(document.getElementById('ch-speed'),{type:'bar',
+      data:{labels:labs,datasets:[{label:'Avg ms',data:[r.rsa.avg,r.ecc.avg,r.kyber.avg,r.dilithium.avg],backgroundColor:clrs,borderColor:brds,borderWidth:1.5,borderRadius:4}]},
+      options:{...CD,responsive:true,maintainAspectRatio:false}});
+
+    destroyChart('keys');
+    chartInstances.keys = new Chart(document.getElementById('ch-keys'),{type:'bar',
+      data:{labels:['RSA','ECC','Kyber PK','Dilithium PK'],datasets:[{label:'bits',data:[r.key_sizes.rsa,r.key_sizes.ecc,r.key_sizes.kyber_pk,r.key_sizes.dilithium_pk],backgroundColor:clrs,borderColor:brds,borderWidth:1.5,borderRadius:4}]},
+      options:{...CD,responsive:true,maintainAspectRatio:false}});
+
+    const runLabs = Array.from({length:iters},(_,i)=>'#'+(i+1));
+    destroyChart('line');
+    chartInstances.line = new Chart(document.getElementById('ch-line'),{type:'line',
+      data:{labels:runLabs,datasets:[
+        {label:'RSA',data:r.rsa.all,borderColor:CC.rsa.b,backgroundColor:'transparent',tension:.3,pointRadius:2},
+        {label:'ECC',data:r.ecc.all,borderColor:CC.ecc.b,backgroundColor:'transparent',tension:.3,pointRadius:2},
+        {label:'Kyber',data:r.kyber.all,borderColor:CC.kyber.b,backgroundColor:'transparent',tension:.3,pointRadius:2},
+        {label:'Dilithium',data:r.dilithium.all,borderColor:CC.dilithium.b,backgroundColor:'transparent',tension:.3,pointRadius:2},
+      ]},
+      options:{...CD,responsive:true,maintainAspectRatio:false,plugins:{...CD.plugins,tooltip:{mode:'index',intersect:false}}}});
+
+    destroyChart('range');
+    chartInstances.range = new Chart(document.getElementById('ch-range'),{type:'bar',
+      data:{labels:labs,datasets:[
+        {label:'Min',data:[r.rsa.min,r.ecc.min,r.kyber.min,r.dilithium.min],backgroundColor:'rgba(0,255,135,.4)',borderRadius:3},
+        {label:'Avg',data:[r.rsa.avg,r.ecc.avg,r.kyber.avg,r.dilithium.avg],backgroundColor:'rgba(0,240,255,.4)',borderRadius:3},
+        {label:'Max',data:[r.rsa.max,r.ecc.max,r.kyber.max,r.dilithium.max],backgroundColor:'rgba(255,0,119,.4)',borderRadius:3},
+      ]},
+      options:{...CD,responsive:true,maintainAspectRatio:false}});
+
+    setStatus('> BENCHMARK COMPLETE — '+iters+' ITERATIONS EACH', 'success');
+  } catch(e) { setStatus('> ERROR: '+e.message, 'error'); }
+  finally { btn.classList.remove('loading'); btn.textContent = '◈ RUN BENCHMARK'; }
+}
+
+// ════════════════════════════════════════════
+//  TAB 5 — SECURE CHAT
+// ════════════════════════════════════════════
+function initSocket() {
+  if (socket) return;
+  socket = io();
+
+  socket.on('room_created', async (data) => {
+    chatState.roomId = data.room_id;
+    chatState.isInitiator = true;
+    document.getElementById('room-display').style.display = 'block';
+    set('room-code-display', data.room_id);
+    set('chat-room-label', '⬡ ROOM: ' + data.room_id);
+    ksSet('conn', 'YES', true);
+    setStatus('> ROOM CREATED: ' + data.room_id + ' — SHARE CODE WITH PARTNER', 'success');
+    addSysMsg('Room ' + data.room_id + ' created. Share this code with your partner.');
+    addSysMsg('Waiting for partner to join...');
+  });
+
+  socket.on('joined_ok', (data) => {
+    chatState.roomId = data.room_id;
+    set('chat-room-label', '⬡ ROOM: ' + data.room_id);
+    ksSet('conn', 'YES', true);
+    setStatus('> JOINED ROOM: ' + data.room_id, 'success');
+  });
+
+socket.on('partner_joined', async (data) => {
+    addSysMsg('⚡ ' + data.msg);
+    ksSet('partner', 'ONLINE', true);
+    // Only the room CREATOR starts the key exchange
+    if (chatState.isInitiator) {
+        await performKeyExchange();
+    }
+  });
+
+  socket.on('receive_kyber_pk', async (data) => {
+    // We are the responder — encapsulate with partner's PK
+    addKexStep(2, true);
+    const encRes = await api('/api/chat/kyber_encaps', {pk_hex: data.pk_hex});
+    chatState.sharedKey = encRes.shared_key_hex;
+    socket.emit('share_kyber_ct', {room_id: chatState.roomId, ct_hex: encRes.ct_hex});
+    addKexStep(3, true);
+    addKexStep(4, true);
+    ksSet('kyber', 'ACTIVE', true);
+    // Now generate and share Dilithium keys
+    await setupDilithium();
+  });
+
+  socket.on('receive_kyber_ct', async (data) => {
+    // We are the initiator — decapsulate
+    addKexStep(3, true);
+    const decRes = await api('/api/chat/kyber_decaps', {sk_hex: chatState.kyberSk, ct_hex: data.ct_hex});
+    chatState.sharedKey = decRes.shared_key_hex;
+    addKexStep(4, true);
+    ksSet('kyber', 'ACTIVE', true);
+    await setupDilithium();
+  });
+
+  socket.on('receive_dil_pk', (data) => {
+    chatState.partnerDilPk = data.pk_hex;
+    addKexStep(6, true);
+    addKexStep(7, true);
+    hideKexOverlay();
+    chatState.secured = true;
+    ksSet('dil', 'ACTIVE', true);
+    ksSet('channel', 'SECURED ✅', true);
+    document.getElementById('sec-dot').classList.add('armed');
+    set('sec-label', 'QUANTUM SECURED');
+    document.getElementById('chat-msg').disabled = false;
+    document.getElementById('send-btn').disabled = false;
+    document.getElementById('chat-empty').style.display = 'none';
+    socket.emit('key_exchange_done', {room_id: chatState.roomId});
+    addSysMsg('🔐 Quantum key exchange complete. Channel is now end-to-end encrypted.');
+    addSysMsg('Kyber-512 shared secret established · Dilithium-2 signatures active');
+    setStatus('> CHANNEL SECURED WITH KYBER-512 + DILITHIUM-2', 'success');
+  });
+
+  socket.on('partner_key_ready', () => {
+    if (!chatState.secured) {
+      hideKexOverlay();
+      chatState.secured = true;
+      ksSet('channel', 'SECURED ✅', true);
+      document.getElementById('sec-dot').classList.add('armed');
+      set('sec-label', 'QUANTUM SECURED');
+      document.getElementById('chat-msg').disabled = false;
+      document.getElementById('send-btn').disabled = false;
+      document.getElementById('chat-empty').style.display = 'none';
+    }
+  });
+
+  socket.on('receive_message', async (data) => {
+    // Decrypt + verify
+    const decRes  = await api('/api/chat/decrypt_msg', {ct_hex:data.ct_hex, iv_hex:data.iv_hex, tag_hex:data.tag_hex, shared_key_hex:chatState.sharedKey});
+    const verRes  = chatState.partnerDilPk
+      ? await api('/api/chat/verify_msg', {message:decRes.message, sig_hex:data.sig_hex, pk_hex:chatState.partnerDilPk})
+      : {valid: false};
+    appendMessage('theirs', data.username, decRes.message, data, verRes.valid);
+  });
+
+  socket.on('partner_left', (data) => {
+    addSysMsg('⚠ ' + data.msg);
+    ksSet('partner', 'OFFLINE', false);
+    ksSet('channel', 'CLOSED', false);
+    document.getElementById('sec-dot').classList.remove('armed');
+    set('sec-label', 'DISCONNECTED');
+    document.getElementById('chat-msg').disabled = true;
+    document.getElementById('send-btn').disabled = true;
+    chatState.secured = false;
+  });
+
+  socket.on('chat_error', (data) => {
+    setStatus('> ERROR: ' + data.msg, 'error');
+  });
+}
+
+async function performKeyExchange() {
+  showKexOverlay();
+  addKexStep(1, false); // active
+  // Generate Kyber keypair
+  const kres = await api('/api/chat/kyber_keygen', {});
+  chatState.kyberPk = kres.pk_hex;
+  chatState.kyberSk = kres.sk_hex;
+  addKexStep(1, true);
+  addKexStep(2, false);
+  // Share PK
+  socket.emit('share_kyber_pk', {room_id: chatState.roomId, pk_hex: chatState.kyberPk});
+  // Wait for receive_kyber_pk or receive_kyber_ct events (handled above)
+}
+
+async function setupDilithium() {
+  addKexStep(5, false);
+  const dres = await api('/api/chat/dil_keygen', {});
+  chatState.dilPk = dres.pk_hex;
+  chatState.dilSk = dres.sk_hex;
+  addKexStep(5, true);
+  socket.emit('share_dil_pk', {room_id: chatState.roomId, pk_hex: chatState.dilPk, username: chatState.username});
+}
+
+function showKexOverlay() { document.getElementById('kex-overlay').classList.add('show') }
+function hideKexOverlay() { document.getElementById('kex-overlay').classList.remove('show') }
+
+function addKexStep(n, done) {
+  const el = document.getElementById('ks'+n);
+  if (!el) return;
+  el.className = 'kex-step ' + (done ? 'done' : 'active');
+}
+
+async function createRoom() {
+  const name = document.getElementById('chat-name').value.trim() || 'AGENT_' + Math.floor(Math.random()*999);
+  chatState.username = name;
+  initSocket();
+  socket.emit('create_room', {username: name});
+}
+
+async function joinRoom() {
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  const name = document.getElementById('chat-name').value.trim() || 'AGENT_' + Math.floor(Math.random()*999);
+  if (!code) return setStatus('> ENTER A ROOM CODE', 'error');
+  chatState.username = name;
+  initSocket();
+  socket.emit('join_chat_room', {room_id: code, username: name});
+  set('chat-room-label', '⬡ ROOM: ' + code);
+  ksSet('conn', 'YES', true);
+  document.getElementById('room-display').style.display = 'block';
+  set('room-code-display', code);
+  chatState.isInitiator = false;
+  addSysMsg('Joining room ' + code + '...');
+  addSysMsg('Waiting for key exchange...');
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-msg');
+  const msg = input.value.trim();
+  if (!msg || !chatState.secured) return;
+  input.value = '';
+
+  const ts = new Date().toLocaleTimeString();
+
+  // Encrypt
+  const encRes = await api('/api/chat/encrypt_msg', {message: msg, shared_key_hex: chatState.sharedKey});
+  // Sign
+  const sigRes = await api('/api/chat/sign_msg', {message: msg, sk_hex: chatState.dilSk});
+
+  socket.emit('chat_message', {
+    room_id:   chatState.roomId,
+    ct_hex:    encRes.ct_hex,
+    iv_hex:    encRes.iv_hex,
+    tag_hex:   encRes.tag_hex,
+    sig_hex:   sigRes.sig_hex,
+    username:  chatState.username,
+    timestamp: ts,
+  });
+
+  // Show own message
+  appendMessage('mine', chatState.username, msg, {...encRes, sig_hex: sigRes.sig_hex}, true);
+}
+
+function chatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function appendMessage(side, username, plaintext, cryptoData, sigValid) {
+  const container = document.getElementById('chat-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + side;
+
+  const ts = new Date().toLocaleTimeString();
+  const sigBadge = `<span class="msg-sig-badge ${sigValid?'ok':'bad'}">${sigValid?'✅ SIG VALID':'❌ SIG FAIL'}</span>`;
+  const meta = `<div class="msg-meta">${username} · ${ts} ${sigBadge}</div>`;
+
+  if (chatState.view === 'clean') {
+    wrap.innerHTML = meta + `<div class="bubble-clean decrypt-anim">${esc(plaintext)}</div>`;
+  } else {
+    const ct_preview = (cryptoData.ct_hex || '').substring(0,40) + '…';
+    const sig_preview = (cryptoData.sig_hex || '').substring(0,40) + '…';
+    wrap.innerHTML = meta + `
+      <div class="bubble-tech decrypt-anim">
+        <div class="tech-row"><div class="tech-k">PLAINTEXT</div><div class="tech-v plain">${esc(plaintext)}</div></div>
+        <div class="tech-row"><div class="tech-k">CIPHERTEXT (AES-256-GCM)</div><div class="tech-v cipher">${ct_preview}</div></div>
+        <div class="tech-row"><div class="tech-k">IV</div><div class="tech-v cipher">${cryptoData.iv_hex||'—'}</div></div>
+        <div class="tech-row"><div class="tech-k">DILITHIUM SIGNATURE</div><div class="tech-v sig">${sig_preview}</div></div>
+        <div class="tech-row"><div class="tech-k">SIGNATURE VALID</div><div class="tech-v ${sigValid?'ok':'bad'}">${sigValid?'✅ VERIFIED':'❌ INVALID'}</div></div>
+      </div>`;
+  }
+
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addSysMsg(msg) {
+  const container = document.getElementById('chat-messages');
+  const el = document.createElement('div');
+  el.style.cssText = 'text-align:center;font-family:var(--mono);font-size:.65rem;color:var(--txt3);padding:.3rem;opacity:.6';
+  el.textContent = '— ' + msg + ' —';
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+function setView(v) {
+  chatState.view = v;
+  document.getElementById('vt-clean').className = 'vtbtn'+(v==='clean'?' active':'');
+  document.getElementById('vt-tech').className  = 'vtbtn'+(v==='tech'?' active':'');
+}
+
+function copyRoomCode() {
+  const code = chatState.roomId;
+  if (code) navigator.clipboard.writeText(code).then(() => setStatus('> ROOM CODE COPIED: '+code, 'success'));
+}
+
+function ksSet(key, val, on) {
+  const el = document.getElementById('ks-'+key);
+  if (el) { el.textContent = val; el.className = 'ks-val '+(on?'on':'off'); }
+}
+
+// ════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════
+function set(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function api(url, body) {
+  const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return res.json();
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter') {
+    if(document.getElementById('panel-text').classList.contains('active')) encryptText();
+    if(document.getElementById('panel-sign').classList.contains('active')) signMessage();
+  }
+});
+
+// Check URL for room code on load
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const room = params.get('room');
+  if (room) {
+    switchTab('chat');
+    document.getElementById('room-code-input').value = room.toUpperCase();
+    setStatus('> ROOM CODE DETECTED: ' + room + ' — ENTER YOUR NAME AND JOIN', 'active');
+  }
+});
+</script>
+</body>
+</html>

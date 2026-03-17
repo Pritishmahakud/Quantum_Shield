@@ -1,0 +1,9 @@
+# Quantum_Shield v3 — Dependencies
+# pip install -r requirements.txt
+
+cryptography        # RSA-2048, ECC, AES-GCM
+kyber-py            # Kyber-512  — ML-KEM  (FIPS 203)
+dilithium-py        # Dilithium2 — ML-DSA  (FIPS 204)
+flask               # Web framework
+flask-socketio      # Real-time WebSocket chat
+simple-websocket    # WebSocket transport for flask-socketio
